@@ -28,6 +28,7 @@ class Simulator:
         self.lap_started = False
         self.track_limit_violations = 0
         self.currently_violating = False
+        self.trajectory = []
 
     def check_track_limits(self):
         car_position = self.car.state[0:2]
@@ -108,6 +109,22 @@ class Simulator:
                 fontsize=8, color="Red"
             )
 
+            self.trajectory.append([self.car.state[0], self.car.state[1], self.car.state[3]])
+            if len(self.trajectory) > 1:
+                trajectory_array = np.array(self.trajectory)
+                for i in range(len(trajectory_array) - 1):
+                    speed = trajectory_array[i, 2] 
+                    if speed < 20:
+                        color = 'red'
+                    elif speed < 50:
+                        ratio = (speed - 20) / 30
+                        color = (1.0, ratio * 0.65, 0.0)
+                    else:
+                        ratio = (speed - 50) / 50
+                        color = ((1.0 - ratio), 0.65 + ratio * 0.35, 0.0)
+                    self.axis.plot(trajectory_array[i:i+2, 0], trajectory_array[i:i+2, 1], 
+                                 color=color, linewidth=2, alpha=0.8)
+
             self.figure.canvas.draw()
             return True
 
@@ -120,7 +137,7 @@ class Simulator:
         if progress > 10.0 and not self.lap_started:
             self.lap_started = True
     
-        if progress <= 1.0 and self.lap_started and not self.lap_finished:
+        if progress <= 10.0 and self.lap_started and not self.lap_finished:
             self.lap_finished = True
             self.lap_time_elapsed = time() - self.lap_start_time
 
