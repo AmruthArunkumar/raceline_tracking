@@ -7,8 +7,6 @@ from simulator import RaceTrack
 prevErrorDelta = 0.0
 prevErrorV = 0.0
 
-LOOKAHEAD_DISTANCE_TURN = 30
-
 KpV = 1.0
 KdV = 0.2
 KiV = 0.05
@@ -82,7 +80,7 @@ def lower_controller(
 
     return np.array([deltaRate, a]).T
 
-def getAlpha(lookAheadPoint: np.ndarray, pos: list[float, float], phi: np.float64):
+def get_alpha(lookAheadPoint: np.ndarray, pos: list[float, float], phi: np.float64):
     dx = lookAheadPoint[0] - pos[0]
     dy = lookAheadPoint[1] - pos[1]
 
@@ -90,6 +88,17 @@ def getAlpha(lookAheadPoint: np.ndarray, pos: list[float, float], phi: np.float6
     headingError = desiredPhi - phi
 
     return np.arctan2(np.sin(headingError), np.cos(headingError))
+
+def get_angles(points: list[np.ndarray]):
+    results = []
+
+    for i in range(len(points) - 3):
+        angle1 = np.arctan((points[i + 1][1] - points[i][1]) / (points[i + 1][0] - points[i][0]))
+        angle2 = np.arctan((points[i + 2][1] - points[i + 1][1]) / (points[i + 2][0] - points[i + 1][0]))
+
+        results.append(angle2 - angle1)
+
+    return results
 
 def controller(
     state : ArrayLike, # car state: [sx, sy, phi, v, delta]
@@ -111,15 +120,25 @@ def controller(
     path = racetrack.centerline
 
     closest = np.argmin(np.linalg.norm(path - pos, axis=1))
-    lookaheadPoints = getLookaheadPoints(closest, path, [LOOKAHEAD_DISTANCE_TURN])
+    lookahead_distances = [30, 50, 70, 90, 110, 150]
+    lookahead_points = getLookaheadPoints(closest, path, lookahead_distances)
+    turn_angles = get_angles(lookahead_points)
+    # print(", ".join(["({:.2f}, {:.2f})".format(x, y) for [x, y] in lookahead_points]))
+    # print(", ".join(["{:.2f}".format(a) for a in turn_angles]))
 
-    alphas = [getAlpha(point, pos, phi) for point in lookaheadPoints]
+    alphas = [get_alpha(point, pos, phi) for point in lookahead_points]
 
-    deltaR = np.arctan(2 * wb * np.sin(alphas[0]) / LOOKAHEAD_DISTANCE_TURN)
+    deltaR = np.arctan(2 * wb * np.sin(alphas[0]) / lookahead_distances[0]) # Pure pursuit
     deltaR = np.clip(deltaR, deltaMin, deltaMax)
 
-    vR = vMax / (1 + 10 * max([np.abs(alpha) for alpha in alphas]))  
-    vR = np.clip(vR, vMin, vMax)
+    steering_factor = np.abs(alphas[0])
+    steering_compensation = 5 if steering_factor >= 0.25 else 5
+
+    # print("{:.2f} {:.2f}".format(steering_factor, steering_compensation))
+
+    vR = vMax / (1 + steering_compensation * max([np.abs(alpha) for alpha in alphas]))  
+    # vR = np.clip(vR, vMin, vMax)
+    vR = np.clip(vR, max(vMin, 20), vMax)
 
     # print("{:.2f}, {:.2f}, [{:.2f}, {:.2f}], [{:.2f}, {:.2f}]".format(turn_factor, vR, pos[0], pos[1], lookaheadPoint[0], lookaheadPoint[1]))
 
