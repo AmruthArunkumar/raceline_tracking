@@ -133,7 +133,8 @@ def controller(
     path = racetrack.centerline
 
     closest = np.argmin(np.linalg.norm(path - pos, axis=1))
-    lookahead_distances = [30, 50, 70, 100, 130, 170, 210]
+    # lookahead_distances = [30, 50, 70, 100, 130, 170, 200, 230, 260]
+    lookahead_distances = [30, 50, 70, 90, 110, 130, 150, 170, 190, 210, 230, 250]
     lookahead_indexes = []
     padded_lookahead_distances = [] # Compute distances with += 10 around each point as well
     for dist in lookahead_distances:
@@ -149,15 +150,17 @@ def controller(
     # print(", ".join(["({:.2f}, {:.2f})".format(x, y) for [x, y] in lookahead_points]))
     # print(", ".join(["{:.2f}".format(a) for a in turn_angles]))
 
+    # TODO: this is actually a pretty bad way to calculate our required steering angle and we should change to turn_angles
     alphas = [get_alpha(point, pos, phi) for point in lookahead_points]
 
-    pure_pursuit_magnification = 2
+    pure_pursuit_magnification = 1
     deltaR = np.arctan(2 * pure_pursuit_magnification * wb * np.sin(alphas[1]) / lookahead_distances[1]) # Pure pursuit
+    deltaR = deltaR * (math.e ** (np.fabs(deltaR) * 10)) # I'm just making up formulas at this point LOL
     deltaR = np.clip(deltaR, deltaMin, deltaMax)
 
     # print(", ".join("{:.2f}".format(a) for a in turn_angles))
     steering_compensation = max([np.abs(angle) for index, angle in enumerate(turn_angles)])
-    steering_compensation *= 0 if steering_compensation <= 0.1 else 10
+    steering_compensation *= 0 if steering_compensation <= 0.1 else 4
 
     # print("{:.2f} {:.2f}".format(steering_factor, steering_compensation))
 
