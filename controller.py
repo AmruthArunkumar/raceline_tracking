@@ -8,13 +8,13 @@ from simulator import RaceTrack
 prevErrorDelta = 0.0
 prevErrorV = 0.0
 
-KpV = 1.25
+KpV = 3
 KdV = 0.2
-KiV = 0.1
+KiV = 1
 
-KpDELTA = 4.0
-KdDELTA = 0.5
-KiDELTA = 0.1
+KpDELTA = 20
+KdDELTA = 0.1
+KiDELTA = 2
 
 def getLookaheadPoints(closest: int, path: np.ndarray, lookahead_distances: list[int] = [30]) -> list[np.ndarray]:
     """
