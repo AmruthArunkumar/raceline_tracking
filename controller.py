@@ -12,9 +12,9 @@ KpV = 3
 KdV = 0.2
 KiV = 1
 
-KpDELTA = 20
+KpDELTA = 19
 KdDELTA = 0.1
-KiDELTA = 2
+KiDELTA = 1.5
 
 def getLookaheadPoints(closest: int, path: np.ndarray, lookahead_distances: list[int] = [30]) -> list[np.ndarray]:
     """
@@ -79,7 +79,7 @@ def lower_controller(
     a = np.clip(a, minAccel, maxAccel)
     deltaRate = np.clip(deltaRate, minSteerRate, maxSteerRate)
 
-    print("C {:.2f}, {:.2f}".format(deltaRate, a))
+    # print("C {:.2f}, {:.2f}".format(deltaRate, a))
 
     return np.array([deltaRate, a]).T
 
@@ -134,11 +134,11 @@ def controller(
 
     closest = np.argmin(np.linalg.norm(path - pos, axis=1))
     # lookahead_distances = [30, 50, 70, 100, 130, 170, 200, 230, 260]
-    lookahead_distances = [30, 50, 70, 90, 110, 130, 150, 170, 190, 210, 230, 250]
+    lookahead_distances = [10, 30, 50, 70, 90, 110, 130, 150, 170, 190, 210, 230, 250]
     lookahead_indexes = []
     padded_lookahead_distances = [] # Compute distances with += 10 around each point as well
     for dist in lookahead_distances:
-        if len(padded_lookahead_distances) == 0 or padded_lookahead_distances[-1] != dist:
+        if len(padded_lookahead_distances) == 0 or padded_lookahead_distances[-1] != dist - 10:
             lookahead_indexes.append(len(padded_lookahead_distances) + 1)
             padded_lookahead_distances.extend((dist - 10, dist, dist + 10))
         else:
@@ -151,21 +151,23 @@ def controller(
     # print(", ".join(["{:.2f}".format(a) for a in turn_angles]))
 
     # TODO: this is actually a pretty bad way to calculate our required steering angle and we should change to turn_angles
-    alphas = [get_alpha(point, pos, phi) for point in lookahead_points]
+    alpha_point = lookahead_points[3]
+    alpha = get_alpha(alpha_point, pos, phi)
 
-    pure_pursuit_magnification = 1
-    deltaR = np.arctan(2 * pure_pursuit_magnification * wb * np.sin(alphas[1]) / lookahead_distances[1]) # Pure pursuit
-    deltaR = deltaR * (math.e ** (np.fabs(deltaR) * 10)) # I'm just making up formulas at this point LOL
+    # print("DIFF {:.5f}, {:.5f}".format(alpha, turn_angles[0]))
+
+    pure_pursuit_magnification = 1.1
+    deltaR = np.arctan(2 * pure_pursuit_magnification * wb * np.sin(alpha) / lookahead_distances[1]) # Pure pursuit
     deltaR = np.clip(deltaR, deltaMin, deltaMax)
 
     # print(", ".join("{:.2f}".format(a) for a in turn_angles))
     steering_compensation = max([np.abs(angle) for index, angle in enumerate(turn_angles)])
-    steering_compensation *= 0 if steering_compensation <= 0.1 else 4
+    steering_compensation *= 0 if steering_compensation <= 0.1 else 1.5
 
     # print("{:.2f} {:.2f}".format(steering_factor, steering_compensation))
 
     vR = vMax / (1 + steering_compensation)
-    print("{:.2f}, {:.2f}, {:.2f}".format(steering_compensation, deltaR, vR))
+    # print("{:.2f}, {:.2f}, {:.2f}".format(steering_compensation, deltaR, vR))
     vR = np.clip(vR, vMin, vMax)
 
     # print("{:.2f}, {:.2f}, [{:.2f}, {:.2f}], [{:.2f}, {:.2f}]".format(turn_factor, vR, pos[0], pos[1], lookaheadPoint[0], lookaheadPoint[1]))
