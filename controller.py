@@ -156,7 +156,9 @@ def controller(
 
     # print("DIFF {:.5f}, {:.5f}".format(alpha, turn_angles[0]))
 
-    pure_pursuit_magnification = 1.1
+    # pure_pursuit_magnification = 1.1
+    # Scale magnification depending how much we need to turn (lol)
+    pure_pursuit_magnification = 1.1 + np.fabs(get_alpha(lookahead_points[1], pos, phi)) / math.pi
     deltaR = np.arctan(2 * pure_pursuit_magnification * wb * np.sin(alpha) / lookahead_distances[1]) # Pure pursuit
     deltaR = np.clip(deltaR, deltaMin, deltaMax)
 
